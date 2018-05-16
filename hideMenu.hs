@@ -1,34 +1,51 @@
 import Control.Monad (when, forM_)
 import Control.Exception (catch)
 import System.Directory (doesFileExist) -- copyFile?
-import System.FilePath.Posix ((</>))
+import System.FilePath.Posix ((</>), takeFileName)
 import System.Environment (getArgs, getEnv)
 import System.Exit (die)
+import Data.List (isPrefixOf)
+
 
 systemLevelDir = "/usr/share/applications/"
 userLevelDir = ".local/share/applications/"
 lineToAppend = "NoDisplay=true"
 
-absoluteNewPaths :: String -> [String] -> IO [String]
-absoluteNewPaths relative fileNames = do
-    home <- getEnv "HOME"
-    return $ map ((home </> relative) </>) fileNames
+
+getNewPaths :: String -> [String] -> IO [String]
+getNewPaths relative fileNames = do
+  home <- getEnv "HOME"
+  return $ map ((home </> relative) </>) fileNames
+
+
+getOldPaths :: IO [String]
+getOldPaths = do
+  args <- getArgs
+  case args of
+    [] -> lines <$> getContents
+    ["--"] -> lines <$> getContents
+    _ | systemLevelDir `isPrefixOf` (head args) -> return args
+      | otherwise -> return $ map (systemLevelDir </>) args
+
+
+copyOneFile :: String -> IO ()
+copyOneFile absoluteOldPath = do
+  newContents <- dontDisplay . lines <$> readFile absoluteOldPath
+  newPath <- getNewPath
+  writeFile newPath newContents
+    where getNewPath = do
+            home <- getEnv "HOME"
+            return $ home </> userLevelDir </> fileName
+          fileName = takeFileName absoluteOldPath
+
 
 main = do
-    fileNames <- getArgs
-    when (length fileNames == 0) $
-        die "Error: No files provided"
-    let paths = (systemLevelDir </>) <$> fileNames
-    allValidPaths <- and <$> traverse doesFileExist paths
-    when (not allValidPaths) $
-        die "Error: One or more files didn't exist"
-    files <- fmap lines <$> mapM readFile paths
-    let allValidXdg = all ("[Desktop Entry]" `elem`) files
-    when (not allValidXdg) $
-        die "Error: One or more files didn't have a [Desktop Entry] line"
-    targets <- absoluteNewPaths userLevelDir fileNames
-    let conjoined = zip targets $ map dontDisplay files
-    forM_ conjoined $ uncurry writeFile
+  absoluteOldPaths <- getOldPaths
+  allValidPaths <- and <$> traverse doesFileExist absoluteOldPaths
+  when (not allValidPaths) $
+      die "Error: One or more files didn't exist"
+  traverse copyOneFile absoluteOldPaths
+
 
 dontDisplay :: [String] -> String
 dontDisplay desktopFile = unlines $ start ++ lineToAppend:rest

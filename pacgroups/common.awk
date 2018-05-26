@@ -23,9 +23,3 @@ function IsGrouped(histLine) {
 IsManager($0) && IsGrouped($0) {
     Groups[$NF] = "You should not see this"
 }
-
-END {
-    for (group in Groups) {
-        print "group: " group
-    }
-}

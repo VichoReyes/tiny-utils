@@ -66,3 +66,12 @@ IsUninstalling() {
         }
     }
 }
+
+# delete empty groups
+END {
+    for (group in Groups) {
+        if (length(Groups[group]) == 0) {
+            delete Groups[group]
+        }
+    }
+}

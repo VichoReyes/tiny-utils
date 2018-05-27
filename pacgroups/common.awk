@@ -7,22 +7,22 @@ BEGIN {
     Managers[3] = "(sudo )?pacaur"
 }
 
-function IsInstalling(histLine) {
+function IsInstalling() {
     for (i = 1; i <= length(Managers); i++) {
-        if (histLine ~ Managers[i] " -S[yu]* ") {
+        if ($0 ~ Managers[i] " -S[yu]* ") {
             return 1 # True
         }
     }
     return 0 # False
 }
 
-function IsGrouped(histLine) {
-    return histLine ~ "# *[-_a-zA-Z0-9]+ *$"
+function IsGrouped() {
+    return $0 ~ "# *[-_a-zA-Z0-9]+ *$"
 }
 
-function IsUninstalling(histLine) {
+function IsUninstalling() {
     for (i = 1; i <= length(Managers); i++) {
-        if (histLine ~ Managers[i] " -R") {
+        if ($0 ~ Managers[i] " -R") {
             return 1 # True
         }
     }
@@ -30,7 +30,7 @@ function IsUninstalling(histLine) {
 }
 
 # can't return array, so it must be passed as a parameter then filled
-function PackageNames(histLine, result) {
+function PackageNames(result) {
     # empty the result array to avoid problems
     for (i in result) {
         delete result[i]
@@ -48,15 +48,15 @@ function PackageNames(histLine, result) {
     }
 }
 
-IsInstalling($0) && IsGrouped($0) {
-    PackageNames($0, result)
+IsInstalling() && IsGrouped() {
+    PackageNames(result)
     for (package in result) {
         Groups[$NF][package] = "You shouldn't see this either"
     }
 }
 
-IsUninstalling($0) {
-    PackageNames($0, result)
+IsUninstalling() {
+    PackageNames(result)
 
     for (group in Groups) {
         for (uninstalled in result) {

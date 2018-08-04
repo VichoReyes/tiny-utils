@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+import sys
+def searchAll(regex, strings):
+    import re
+    return any(map(lambda string: re.search(regex, string), strings))
+from os.path import join
+from subprocess import run
+
+group_path = "/usr/local/pacgroups/"
+
+args = sys.argv[1:]
+
+def runOriginal(args):
+    completed = run(sys.argv[0:1]+args)
+    if completed.returncode:
+        sys.exit(completed.returncode)
+
+# Argument Parsing
+
+def getPackages(args):
+    return filter(lambda arg: arg[0] != "-", args)
+
+def installation(args, new_packages, group_name):
+    try:
+        group_file = open(join(group_path, group_name), 'r')
+        old_packages = {x.strip() for x in group_file}
+        group_file.close()
+    except FileNotFoundError:
+        old_packages = set()
+
+    runOriginal(args)
+
+    try:
+        group_file = open(join(group_path, group_name), 'w')
+    except PermissionError:
+        print("Pacgroups wrapper: Permission error or group non existant")
+        sys.exit(1)
+
+    if searchAll("(-[SUQA]|--sync|--aursync|--upgrade|--query)", args):
+        total_packages = old_packages | new_packages # "|" means union
+    else:
+        print("Your operation was too weird. Group file will be unchanged")
+        total_packages = old_packages
+
+    for pkg in total_packages:
+        group_file.write(pkg+"\n")
+
+    group_file.close()
+
+# don't care
+if "--into" not in args and not searchAll("(-R|--remove)", args):
+    runOriginal(args)
+    sys.exit()
+
+# installing
+elif "--into" in args:
+    index = args.index("--into")
+    del args[index]
+
+    try:
+        group_name = args.pop(index)
+    except IndexError:
+        print("You need to specify a group name after --index")
+        sys.exit(1)
+
+    new_packages = set(getPackages(args))
+    installation(args, new_packages, group_name)
+
+# removing
+elif searchAll("(-R|--remove)", args):
+    runOriginal(args)
+    removed_packages = set(getPackages(args))
+
+    from os import listdir, remove
+    for group in listdir(group_path):
+        try:
+            f = open(join(group_path, group))
+            old_packages = {x.rstrip() for x in f}
+            f.close()
+        except FileNotFoundError:
+            old_packages = set()
+        total_packages = old_packages - removed_packages
+        try:
+            f = open(join(group_path, group), 'w')
+        except PermissionError:
+            print("PermissionError. Run with sudo")
+        for pkg in total_packages:
+            f.write(pkg+"\n")
+        f.close()
+        if len(total_packages) == 0:
+            print("Removing empty group "+group)
+            remove(join(group_path, group))

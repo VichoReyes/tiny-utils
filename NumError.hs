@@ -1,6 +1,7 @@
 module NumError
   ( NumError (..)
   , scalar
+  , instrument
   ) where
 
 mul (v1, e1) (v2, e2) = (v1*v2, v1*v2*sqrt ((e1/v1)^2 + (e2/v2)^2))
@@ -27,3 +28,5 @@ instance (Show a) => Show (NumError a) where
   show (E a) = show a
 
 scalar x = E (x, 0)
+
+instrument factor x = E (x, x*factor)

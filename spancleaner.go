@@ -15,7 +15,8 @@ func main() {
 	input := os.Stdin
 	output := os.Stdout
 	var err error
-	log.SetFlags(log.Lshortfile)
+	log.SetFlags(0)
+	log.SetPrefix(os.Args[0] + ": ")
 	if len(os.Args) >= 2 {
 		input, err = os.Open(os.Args[1])
 		if err != nil {

@@ -65,8 +65,10 @@ func clean(n *html.Node, style string) {
 			return
 		}
 	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
+	for c := n.FirstChild; c != nil; {
+		ns := c.NextSibling
 		clean(c, style)
+		c = ns
 	}
 }
 
